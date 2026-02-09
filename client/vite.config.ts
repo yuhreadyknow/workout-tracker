@@ -4,6 +4,7 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  base: '/workout-tracker/',
   root: path.resolve(__dirname),
   server: {
     port: 5173,
