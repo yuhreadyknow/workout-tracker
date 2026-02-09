@@ -39,20 +39,24 @@ export async function createTemplate(data: { name: string; exercises: Omit<Templ
 }
 
 export async function updateTemplate(id: string, data: { name: string; exercises: Omit<Template['exercises'][0], 'id' | 'template_id'>[] }): Promise<Template> {
-  await db.templates.update(id, { name: data.name });
-  await db.templateExercises.where('template_id').equals(id).delete();
-  await db.templateExercises.bulkAdd(
-    (data.exercises || []).map((ex, i) => ({
-      id: uuid(),
-      template_id: id,
-      name: ex.name,
-      weight: ex.weight ?? 0,
-      weight_unit: ex.weight_unit ?? 'LB',
-      sets: ex.sets ?? 3,
-      reps: ex.reps ?? 10,
-      sort_order: ex.sort_order ?? i,
-    }))
-  );
+  await db.transaction('rw', db.templates, db.templateExercises, async () => {
+    await db.templates.update(id, { name: data.name });
+    await db.templateExercises.where('template_id').equals(id).delete();
+    if (data.exercises && data.exercises.length > 0) {
+      await db.templateExercises.bulkAdd(
+        data.exercises.map((ex, i) => ({
+          id: uuid(),
+          template_id: id,
+          name: ex.name,
+          weight: ex.weight ?? 0,
+          weight_unit: ex.weight_unit ?? 'LB',
+          sets: ex.sets ?? 3,
+          reps: ex.reps ?? 10,
+          sort_order: ex.sort_order ?? i,
+        }))
+      );
+    }
+  });
   return getTemplate(id);
 }
 
